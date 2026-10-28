@@ -1,0 +1,304 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique @default("local@taxhacker")
+  name                  String                 @default("Local User")
+  businessName          String?
+  businessAddress       String?
+  transactions          Transaction[]
+  categories            Category[]
+  projects              Project[]
+  fields                Field[]
+  files                 File[]
+  currencies            Currency[]
+  settings              Setting[]
+  recurringTransactions RecurringTransaction[]
+  contacts              Contact[]
+  invoices              Invoice[]
+  bills                 Bill[]
+  bankAccounts          BankAccount[]
+  bankTransactions      BankTransaction[]
+  mileageLogs           MileageLog[]
+  timeEntries           TimeEntry[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model Transaction {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String?
+  description  String?
+  merchant     String?
+  total        Int?
+  currencyCode String?
+  type         String    @default("expense")
+  items        String    @default("[]")
+  note         String?
+  files        String    @default("[]")
+  extra        String?
+  categoryCode String?
+  projectCode  String?
+  issuedAt     DateTime?
+  text         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, issuedAt])
+  @@index([userId, categoryCode, issuedAt])
+  @@index([categoryCode])
+  @@index([projectCode])
+  @@index([issuedAt])
+  @@index([merchant])
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  color     String   @default("#000000")
+  prompt    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, code])
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  color     String   @default("#000000")
+  prompt    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, code])
+}
+
+model Field {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  type      String   @default("string")
+  prompt    String?
+  required  Boolean  @default(false)
+  isExtra   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, code])
+}
+
+model File {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename        String
+  path            String
+  mimetype        String
+  reviewed        Boolean  @default(false)
+  cachedParseData String?
+  createdAt       DateTime @default(now())
+}
+
+model Currency {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code   String
+  symbol String
+
+  @@unique([userId, code])
+}
+
+model Setting {
+  id     String  @id @default(uuid())
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code   String
+  value  String?
+
+  @@unique([userId, code])
+}
+
+model Contact {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  type            String   @default("client") // client, vendor, both
+  email           String?
+  phone           String?
+  address         String?
+  taxId           String?  // EIN or SSN for 1099
+  w9Received      Boolean  @default(false)
+  paymentTerms    String?  // net30, net15, due_on_receipt
+  defaultCategory String?
+  defaultProject  String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([userId, type])
+}
+
+model Invoice {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceNumber String
+  contactId     String?
+  clientName    String
+  clientEmail   String?
+  lineItems     String    @default("[]") // JSON array of {description, quantity, unitPrice, amount}
+  subtotal      Int       // cents
+  taxRate       Int?      // percentage * 100 (e.g., 850 = 8.5%)
+  taxAmount     Int?      // cents
+  total         Int       // cents
+  currencyCode  String    @default("USD")
+  status        String    @default("draft") // draft, sent, paid, overdue, void
+  issuedAt      DateTime?
+  dueDate       DateTime?
+  paidAt        DateTime?
+  transactionId String?   // linked income transaction when paid
+  projectCode   String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, contactId])
+  @@index([userId, dueDate])
+}
+
+model Bill {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId     String?
+  vendorName    String
+  billNumber    String?
+  lineItems     String    @default("[]") // JSON array
+  total         Int       // cents
+  currencyCode  String    @default("USD")
+  status        String    @default("pending") // pending, approved, paid, overdue
+  issuedAt      DateTime?
+  dueDate       DateTime?
+  paidAt        DateTime?
+  transactionId String?   // linked expense transaction when paid
+  categoryCode  String?
+  projectCode   String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+}
+
+model RecurringTransaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  merchant      String?
+  total         Int
+  currencyCode  String    @default("USD")
+  type          String    @default("expense")
+  categoryCode  String?
+  projectCode   String?
+  frequency     String    // monthly, weekly, quarterly, yearly
+  nextDueDate   DateTime
+  lastGenerated DateTime?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([userId, active, nextDueDate])
+}
+
+model BankAccount {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String    // "Chase Business Checking"
+  institution     String?   // "Chase"
+  accountType     String    @default("checking") // checking, savings, credit_card
+  currencyCode    String    @default("USD")
+  lastBalance     Int?      // cents
+  lastBalanceDate DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model BankTransaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccountId String
+  date          DateTime
+  description   String
+  amount        Int       // cents (positive = deposit, negative = withdrawal)
+  reference     String?   // check number, reference ID
+  status        String    @default("unmatched") // unmatched, matched, excluded
+  matchedTxId   String?   // linked TaxHacker transaction
+  importBatch   String?   // track which import this came from
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, bankAccountId, date])
+  @@index([userId, status])
+  @@index([bankAccountId])
+}
+
+model MileageLog {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  origin      String
+  destination String
+  miles       Int       // tenths of a mile (22.5 miles = 225)
+  purpose     String
+  projectCode String?
+  roundTrip   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, date])
+}
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  minutes     Int
+  description String
+  projectCode String?
+  categoryCode String?
+  billable    Boolean   @default(true)
+  invoiceId   String?   // linked when billed
+  hourlyRate  Int?      // cents per hour
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, date])
+  @@index([userId, projectCode])
+  @@index([userId, invoiceId])
+}
