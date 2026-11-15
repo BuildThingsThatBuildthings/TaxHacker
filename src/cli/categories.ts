@@ -1,4 +1,5 @@
 import { getOrCreateUser } from "../models/user.js"
+import type { CategoryData } from "../models/categories.js"
 import {
   listCategories,
   createCategory,
@@ -21,7 +22,7 @@ async function main() {
     }
     case "create": {
       if (!flags.name) return outputError("--name is required")
-      const data: Record<string, string> = { name: flags.name }
+      const data: CategoryData = { name: flags.name }
       if (flags.color) data.color = flags.color
       if (flags.prompt) data.prompt = flags.prompt
       const category = await createCategory(user.id, data)

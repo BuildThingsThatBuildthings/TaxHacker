@@ -1,4 +1,5 @@
 import { getOrCreateUser } from "../models/user.js"
+import type { FieldData } from "../models/fields.js"
 import {
   listFields,
   createField,
@@ -21,7 +22,7 @@ async function main() {
     }
     case "create": {
       if (!flags.name) return outputError("--name is required")
-      const data: Record<string, unknown> = { name: flags.name }
+      const data: FieldData = { name: flags.name }
       if (flags.type) data.type = flags.type
       if (flags.prompt) data.prompt = flags.prompt
       if (flags.required) data.required = flags.required === "true"

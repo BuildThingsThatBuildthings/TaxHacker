@@ -1,4 +1,5 @@
 import { getOrCreateUser } from "../models/user.js"
+import type { ProjectData } from "../models/projects.js"
 import {
   listProjects,
   createProject,
@@ -21,7 +22,7 @@ async function main() {
     }
     case "create": {
       if (!flags.name) return outputError("--name is required")
-      const data: Record<string, string> = { name: flags.name }
+      const data: ProjectData = { name: flags.name }
       if (flags.color) data.color = flags.color
       if (flags.prompt) data.prompt = flags.prompt
       const project = await createProject(user.id, data)
